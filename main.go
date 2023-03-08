@@ -100,6 +100,7 @@ func main() {
 			log.Fatalf("FirewallMap put err %v \n", err)
 		}
 	}
+
 	defer objs.Close()
 
 	// Attach the program.

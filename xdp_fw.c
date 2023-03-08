@@ -6,20 +6,27 @@
 char __license[] SEC("license") = "Dual MIT/GPL";
 
 #define MAX_MAP_ENTRIES 16
+#define IPV4_PREFIX_LEN 32
 
 enum {
 	BPF_F_NO_PREALLOC = (1U << 0),
 };
 
-struct ip4_trie_key {
-	__u32 prefixlen;
-	__u8 saddr[4];
+/* Key of an a BPF_MAP_TYPE_LPM_TRIE entry */
+struct bpf_lpm_trie_key {
+        __u32   prefixlen;      /* up to 32 for AF_INET, 128 for AF_INET6 */
+        __u8    data[0];        /* Arbitrary size */
+};
+
+struct src_ip4_trie_key {
+	struct bpf_lpm_trie_key lpm_key;
+	__u32 saddr;
 };
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LPM_TRIE);
 	__uint(max_entries, MAX_MAP_ENTRIES);
-	__type(key, struct ip4_trie_key);
+	__type(key, struct src_ip4_trie_key);
 	__type(value, __u32);
 	__uint(pinning, LIBBPF_PIN_BY_NAME);
 	__uint(map_flags, BPF_F_NO_PREALLOC);
@@ -60,15 +67,10 @@ int firewall(struct xdp_md *ctx) {
 		return XDP_ABORTED;
 	}
 
-	//	struct ip4_trie_key key;
-
-	struct {
-		__u32 prefixlen;
-		__u32 saddr;
-	} key;
-
-	key.prefixlen  = 32;
-	key.saddr      = ip->saddr;
+	struct src_ip4_trie_key key = {
+		.lpm_key = { IPV4_PREFIX_LEN, {} },
+		.saddr = ip->saddr,
+	};
 	__u64 *blocked = 0;
 
 	if (tcp->dest == bpf_htons(8080)) {
