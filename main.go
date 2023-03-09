@@ -3,7 +3,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"fmt"
 	"log"
 	"net"
@@ -11,7 +10,9 @@ import (
 	"path"
 	"strings"
 	"time"
+	"unsafe"
 
+	"github.com/cilium/cilium/pkg/types"
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 )
@@ -21,6 +22,9 @@ import (
 
 const (
 	bpfFSPath = "/sys/fs/bpf"
+	// PolicyStaticPrefixBits represents the size in bits of the static
+	// prefix part of an egress policy key (i.e. the source IP).
+	PolicyStaticPrefixBits = uint32(unsafe.Sizeof(types.IPv4{}) * 8)
 )
 
 func startTicker(f func()) chan bool {
@@ -39,6 +43,22 @@ func startTicker(f func()) chan bool {
 		}
 	}()
 	return done
+}
+
+type SrcIP4Key4 struct {
+	PrefixLen uint32
+	SourceIP  types.IPv4
+}
+
+func NewSrcIP4Key4(sourceIP net.IP, sourceMask net.IPMask) SrcIP4Key4 {
+
+	key := SrcIP4Key4{}
+
+	ones, _ := sourceMask.Size()
+	copy(key.SourceIP[:], sourceIP.To4())
+	key.PrefixLen = PolicyStaticPrefixBits + uint32(ones)
+
+	return key
 }
 
 func main() {
@@ -75,7 +95,7 @@ func main() {
 	}
 
 	//from: https://xiongliuhua.com/ebpf/201/, populate the firewall map
-	denyIPs := []string{"10.11.15.114/32", "127.0.0.1/32"}
+	denyIPs := []string{"10.11.15.114/32", "10.169.72.239/32", "127.0.0.1/32"}
 	for index, ip := range denyIPs {
 
 		if !strings.Contains(ip, "/") {
@@ -83,20 +103,26 @@ func main() {
 			ip += "/32"
 
 		}
-		_, ipnet, err := net.ParseCIDR(ip)
+		//_, ipnet, err := net.ParseCIDR(ip)
+		srcIP, ipnet, err := net.ParseCIDR(ip)
 
 		if err != nil {
 			log.Printf("malformed ip %v \n", err)
 			continue
 		}
-		var res = make([]byte, objs.FirewallMap.KeySize())
 
-		ones, _ := ipnet.Mask.Size()
+		key4 := NewSrcIP4Key4(srcIP, ipnet.Mask)
 
-		binary.LittleEndian.PutUint32(res, uint32(ones))
+		//	var res = make([]byte, objs.FirewallMap.KeySize())
 
-		copy(res[4:], ipnet.IP)
-		if err := objs.FirewallMap.Put(res, uint32(index)); err != nil {
+		//	ones, _ := ipnet.Mask.Size()
+
+		//	binary.LittleEndian.PutUint32(res, uint32(ones))
+
+		//	copy(res[4:], ipnet.IP)
+
+		//		if err := objs.FirewallMap.Put(res, uint32(index)); err != nil {
+		if err := objs.FirewallMap.Put(key4, uint32(index)); err != nil {
 			log.Fatalf("FirewallMap put err %v \n", err)
 		}
 	}
