@@ -56,7 +56,8 @@ func NewSrcIP4Key4(sourceIP net.IP, sourceMask net.IPMask) SrcIP4Key4 {
 
 	ones, _ := sourceMask.Size()
 	copy(key.SourceIP[:], sourceIP.To4())
-	key.PrefixLen = PolicyStaticPrefixBits + uint32(ones)
+	//key.PrefixLen = PolicyStaticPrefixBits + uint32(ones) this is broken to cause invalid argument
+	key.PrefixLen = uint32(ones)
 
 	return key
 }
@@ -97,7 +98,7 @@ func main() {
 	var keySlice []SrcIP4Key4
 	var valueSlice []uint32
 
-	denyIPs := []string{"10.11.15.114/32", "10.169.72.239/32", "127.0.0.1/32"}
+	denyIPs := []string{"10.11.15.114/32", "10.169.72.239/24", "127.0.0.1/32"}
 	for index, ip := range denyIPs {
 
 		if !strings.Contains(ip, "/") {
