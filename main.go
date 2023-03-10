@@ -94,7 +94,9 @@ func main() {
 		log.Fatalf("loading objects: %s", err)
 	}
 
-	//from: https://xiongliuhua.com/ebpf/201/, populate the firewall map
+	var keySlice []SrcIP4Key4
+	var valueSlice []uint32
+
 	denyIPs := []string{"10.11.15.114/32", "10.169.72.239/32", "127.0.0.1/32"}
 	for index, ip := range denyIPs {
 
@@ -111,20 +113,32 @@ func main() {
 			continue
 		}
 
+		// populate key and value slices for BatchUpdate
 		key4 := NewSrcIP4Key4(srcIP, ipnet.Mask)
+		keySlice = append(keySlice, key4)
+		valueSlice = append(valueSlice, uint32(index))
 
-		//	var res = make([]byte, objs.FirewallMap.KeySize())
+		/* example of single key/value map update
+		var res = make([]byte, objs.FirewallMap.KeySize())
 
-		//	ones, _ := ipnet.Mask.Size()
+		ones, _ := ipnet.Mask.Size()
 
-		//	binary.LittleEndian.PutUint32(res, uint32(ones))
+		binary.LittleEndian.PutUint32(res, uint32(ones))
 
-		//	copy(res[4:], ipnet.IP)
+		copy(res[4:], ipnet.IP)
 
-		//		if err := objs.FirewallMap.Put(res, uint32(index)); err != nil {
-		if err := objs.FirewallMap.Put(key4, uint32(index)); err != nil {
+		if err := objs.FirewallMap.Put(res, uint32(index)); err != nil {
 			log.Fatalf("FirewallMap put err %v \n", err)
 		}
+		*/
+	}
+
+	count, err := objs.FirewallMap.BatchUpdate(keySlice, valueSlice, nil)
+	if err != nil {
+		log.Fatalf("BatchUpdate: %v", err)
+	}
+	if count != len(keySlice) {
+		log.Fatalf("BatchUpdate: expected count, %d, to be %d", count, len(keySlice))
 	}
 
 	defer objs.Close()
