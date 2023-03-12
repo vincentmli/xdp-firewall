@@ -74,10 +74,10 @@ int firewall(struct xdp_md *ctx) {
 	key.saddr[2]   = (ip->saddr >> 16) & 0xff;
 	key.saddr[3]   = (ip->saddr >> 24) & 0xff;
 
-	__u64 *blocked = 0;
-
 	if (tcp->dest == bpf_htons(8080)) {
-		if ((blocked = bpf_map_lookup_elem(&firewall_map, &key))) {
+		__u32 *drops = bpf_map_lookup_elem(&firewall_map, &key);
+		if (drops) { // source IP in block list, drop it
+			__sync_fetch_and_add(drops, 1);
 			return XDP_DROP;
 		}
 	}
