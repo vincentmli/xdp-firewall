@@ -99,7 +99,7 @@ func main() {
 	var valueSlice []uint32
 
 	denyIPs := []string{"10.11.15.114/32", "10.169.72.239/24", "127.0.0.1/32"}
-	for index, ip := range denyIPs {
+	for _, ip := range denyIPs {
 
 		if !strings.Contains(ip, "/") {
 
@@ -114,10 +114,10 @@ func main() {
 			continue
 		}
 
-		// populate key and value slices for BatchUpdate
+		// populate key and value slices for BatchUpdate, initilize value to 0
 		key4 := NewSrcIP4Key4(srcIP, ipnet.Mask)
 		keySlice = append(keySlice, key4)
-		valueSlice = append(valueSlice, uint32(index))
+		valueSlice = append(valueSlice, uint32(0))
 
 		/* example of single key/value map update
 		var res = make([]byte, objs.FirewallMap.KeySize())
