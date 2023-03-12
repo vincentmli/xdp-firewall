@@ -20,7 +20,7 @@ struct bpf_lpm_trie_key {
 
 struct src_ip4_trie_key {
 	struct bpf_lpm_trie_key lpm_key;
-	__u32 saddr;
+	__u8 saddr[4];
 };
 
 struct {
@@ -67,10 +67,13 @@ int firewall(struct xdp_md *ctx) {
 		return XDP_ABORTED;
 	}
 
-	struct src_ip4_trie_key key = {
-		.lpm_key = { IPV4_PREFIX_LEN, {} },
-		.saddr = ip->saddr,
-	};
+	struct src_ip4_trie_key key;
+	key.lpm_key.prefixlen = IPV4_PREFIX_LEN;
+	key.saddr[0]   = ip->saddr & 0xff;
+	key.saddr[1]   = (ip->saddr >> 8) & 0xff;
+	key.saddr[2]   = (ip->saddr >> 16) & 0xff;
+	key.saddr[3]   = (ip->saddr >> 24) & 0xff;
+
 	__u64 *blocked = 0;
 
 	if (tcp->dest == bpf_htons(8080)) {
