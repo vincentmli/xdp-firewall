@@ -45,6 +45,11 @@ func startTicker(f func()) chan bool {
 	return done
 }
 
+type TimeRange struct {
+	Start uint16
+	End   uint16
+}
+
 type SrcIP4Key4 struct {
 	PrefixLen uint32
 	SourceIP  types.IPv4
@@ -93,6 +98,15 @@ func main() {
 		},
 	}); err != nil {
 		log.Fatalf("loading objects: %s", err)
+	}
+
+	var groupKey [64]byte
+	copy(groupKey[:], []byte("dvbs"))
+
+	groupValue := TimeRange{uint16(630), uint16(660)} //Start 10:30, End 11:00 (10 * 60 + 30, 11 * 60 + 00)
+
+	if err := objs.TimedInternet.Put(groupKey, groupValue); err != nil {
+		log.Fatalf(" TimedInternet put err %v \n", err)
 	}
 
 	var keySlice []SrcIP4Key4

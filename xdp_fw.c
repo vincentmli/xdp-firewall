@@ -32,6 +32,20 @@ struct {
 	__uint(map_flags, BPF_F_NO_PREALLOC);
 } firewall_map SEC(".maps");
 
+typedef char groupkey[64];
+
+struct time_range {
+	__u16 start;
+	__u16 end;
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 128);
+    groupkey* key;
+    __type(value, struct time_range);
+} timed_internet SEC(".maps");
+
 SEC("xdp")
 int firewall(struct xdp_md *ctx) {
 	void *data_end = (void *)(long)ctx->data_end;
