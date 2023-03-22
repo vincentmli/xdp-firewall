@@ -45,11 +45,6 @@ func startTicker(f func()) chan bool {
 	return done
 }
 
-type TimeRange struct {
-	Start uint16
-	End   uint16
-}
-
 type SrcIP4Key4 struct {
 	PrefixLen uint32
 	SourceIP  types.IPv4
@@ -101,12 +96,10 @@ func main() {
 	}
 
 	var groupKey [64]byte
-	copy(groupKey[:], []byte("dvbs"))
+	copy(groupKey[:], []byte("firewall_map"))
 
-	groupValue := TimeRange{uint16(630), uint16(660)} //Start 10:30, End 11:00 (10 * 60 + 30, 11 * 60 + 00)
-
-	if err := objs.TimedInternet.Put(groupKey, groupValue); err != nil {
-		log.Fatalf(" TimedInternet put err %v \n", err)
+	if err := objs.GroupMap.Put(groupKey, uint32(1)); err != nil { // init value to 1 to block traffic
+		log.Fatalf(" GroupMap err %v \n", err)
 	}
 
 	var keySlice []SrcIP4Key4

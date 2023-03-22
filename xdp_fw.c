@@ -34,17 +34,12 @@ struct {
 
 typedef char groupkey[64];
 
-struct time_range {
-	__u16 start;
-	__u16 end;
-};
-
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 128);
+    __uint(max_entries, 16);
     groupkey* key;
-    __type(value, struct time_range);
-} timed_internet SEC(".maps");
+    __type(value, __u32);
+} group_map SEC(".maps");
 
 SEC("xdp")
 int firewall(struct xdp_md *ctx) {
@@ -91,8 +86,20 @@ int firewall(struct xdp_md *ctx) {
 	if (tcp->dest == bpf_htons(8080)) {
 		__u32 *drops = bpf_map_lookup_elem(&firewall_map, &key);
 		if (drops) { // source IP in block list, drop it
-			__sync_fetch_and_add(drops, 1);
-			return XDP_DROP;
+			__u32 *value = 0;
+			groupkey gkey = "firewall_map";
+			value = bpf_map_lookup_elem(&group_map, &gkey);
+			/*
+			 * https://lists.linuxfoundation.org/pipermail/iovisor-dev/2017-September/001088.html
+			 * R0 invalid mem access 'map_value_or_null', do NULL
+			 * check before dereference
+			 */
+			if ( value ) {
+				if ( *value == 1 ) {
+					__sync_fetch_and_add(drops, 1);
+					return XDP_DROP;
+				}
+			}
 		}
 	}
 
