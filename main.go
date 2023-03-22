@@ -17,8 +17,7 @@ import (
 	"github.com/cilium/ebpf/link"
 )
 
-// set environment variable $BPF_CLANG and $BPF_CFLAGS.
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc $BPF_CLANG -cflags $BPF_CFLAGS bpf xdp_fw.c -- -I./headers
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang bpf ./xdp_fw.c -- -I./headers
 
 const (
 	bpfFSPath = "/sys/fs/bpf"
